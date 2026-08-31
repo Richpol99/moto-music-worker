@@ -177,7 +177,7 @@ async def handle_stream(request):
                 print(f"Error limpiando {temp_file}: {ce}")
         asyncio.create_task(cleanup())
         
-        return web.FileResponse(temp_file)
+        return web.FileResponse(temp_file, content_type="audio/mp4")
     else:
         return web.Response(status=404, text="Archivo no encontrado en Google Drive")
 
