@@ -23,11 +23,23 @@ for line in lines:
 with open("/root/.config/rclone/rclone.conf", "w") as f:
     f.write("\n".join(clean_lines) + "\n")
 
-# Escribir cookies
+# Escribir cookies corrigiendo envolturas de línea del navegador
 cookies_file = "/tmp/cookies.txt"
 if YOUTUBE_COOKIES:
+    clean_cookie_lines = []
+    for line in YOUTUBE_COOKIES.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        # Netscape cookies lines start with # or .youtube.com or have tabs
+        if line.startswith("#") or line.startswith(".") or "\t" in line or line.startswith("youtube.com"):
+            clean_cookie_lines.append(line)
+        else:
+            if clean_cookie_lines:
+                clean_cookie_lines[-1] += line
+                
     with open(cookies_file, "w") as f:
-        f.write(YOUTUBE_COOKIES)
+        f.write("\n".join(clean_cookie_lines) + "\n")
 
 async def handle_cache(request):
     video_id = request.query.get("id", "").strip()
@@ -36,7 +48,7 @@ async def handle_cache(request):
 
     print(f"Descargando y subiendo {video_id} a Google Drive...")
     cookies_arg = f"--cookies {cookies_file}" if os.path.exists(cookies_file) else ""
-    cmd = f"yt-dlp {cookies_arg} -f 140 -o - 'https://www.youtube.com/watch?v={video_id}' | rclone rcat gdrive:music_cache/{video_id}.m4a"
+    cmd = f"yt-dlp --js-runtimes node {cookies_arg} -f 140 -o - 'https://www.youtube.com/watch?v={video_id}' | rclone rcat gdrive:music_cache/{video_id}.m4a"
     
     proc = await asyncio.create_subprocess_shell(
         cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE
@@ -62,7 +74,7 @@ async def handle_resolve(request):
 
     print(f"Resolviendo streaming URL para {video_id}...")
     cookies_arg = f"--cookies {cookies_file}" if os.path.exists(cookies_file) else ""
-    cmd = f"yt-dlp {cookies_arg} -g -f 140 'https://www.youtube.com/watch?v={video_id}'"
+    cmd = f"yt-dlp --js-runtimes node {cookies_arg} -g -f 140 'https://www.youtube.com/watch?v={video_id}'"
     
     proc = await asyncio.create_subprocess_shell(
         cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
