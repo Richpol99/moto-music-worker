@@ -4,10 +4,18 @@ from aiohttp import web
 import subprocess
 
 RCLONE_CONFIG_DATA = os.environ.get("RCLONE_CONFIG_DATA", "")
+YOUTUBE_COOKIES = os.environ.get("YOUTUBE_COOKIES", "")
 
+# Escribir rclone config
 os.makedirs("/root/.config/rclone", exist_ok=True)
 with open("/root/.config/rclone/rclone.conf", "w") as f:
     f.write(RCLONE_CONFIG_DATA)
+
+# Escribir cookies si existen
+cookies_file = "/tmp/cookies.txt"
+if YOUTUBE_COOKIES:
+    with open(cookies_file, "w") as f:
+        f.write(YOUTUBE_COOKIES)
 
 async def handle_cache(request):
     video_id = request.query.get("id", "").strip()
@@ -15,7 +23,10 @@ async def handle_cache(request):
         return web.json_response({"success": False, "error": "ID requerido"}, status=400)
 
     print(f"Descargando y subiendo {video_id} a Google Drive...")
-    cmd = f"yt-dlp -f 140 -o - 'https://www.youtube.com/watch?v={video_id}' | rclone rcat gdrive:music_cache/{video_id}.m4a"
+    
+    # Si tenemos cookies, las pasamos a yt-dlp
+    cookies_arg = f"--cookies {cookies_file}" if os.path.exists(cookies_file) else ""
+    cmd = f"yt-dlp {cookies_arg} -f 140 -o - 'https://www.youtube.com/watch?v={video_id}' | rclone rcat gdrive:music_cache/{video_id}.m4a"
     
     proc = await asyncio.create_subprocess_shell(
         cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE
