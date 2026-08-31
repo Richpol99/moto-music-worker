@@ -43,7 +43,6 @@ if YOUTUBE_COOKIES:
 async def find_alternative_video_id(title, artist):
     if not title or not artist:
         return None
-    # Usar query simplificado para buscar version de audio/lyrics que no este bloqueada
     query = f"{artist} {title} audio"
     print(f"Buscando alternativa en YouTube para: {query}")
     cmd = f"yt-dlp --js-runtimes node \"ytsearch1:{query}\" --get-id"
@@ -60,15 +59,16 @@ async def find_alternative_video_id(title, artist):
 
 async def handle_cache(request):
     video_id = request.query.get("id", "").strip()
+    source_id = request.query.get("source_id", "").strip() or video_id
     title = request.query.get("title", "").strip()
     artist = request.query.get("artist", "").strip()
     
     if not video_id:
         return web.json_response({"success": False, "error": "ID requerido"}, status=400)
 
-    print(f"Descargando y subiendo {video_id} a Google Drive...")
+    print(f"Descargando y subiendo {source_id} a Google Drive como {video_id}.m4a...")
     cookies_arg = f"--cookies {cookies_file}" if os.path.exists(cookies_file) else ""
-    cmd = f"yt-dlp --js-runtimes node --extractor-args \"youtube:player_client=tv,web_safari\" {cookies_arg} -f 140 -o - 'https://www.youtube.com/watch?v={video_id}' | rclone rcat gdrive:music_cache/{video_id}.m4a"
+    cmd = f"yt-dlp --js-runtimes node --extractor-args \"youtube:player_client=tv,web_safari\" {cookies_arg} -f 140 -o - 'https://www.youtube.com/watch?v={source_id}' | rclone rcat gdrive:music_cache/{video_id}.m4a"
     
     proc = await asyncio.create_subprocess_shell(
         cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE
@@ -108,15 +108,16 @@ async def handle_cache(request):
 
 async def handle_resolve(request):
     video_id = request.query.get("id", "").strip()
+    source_id = request.query.get("source_id", "").strip() or video_id
     title = request.query.get("title", "").strip()
     artist = request.query.get("artist", "").strip()
     
     if not video_id:
         return web.json_response({"success": False, "error": "ID requerido"}, status=400)
 
-    print(f"Resolviendo streaming URL para {video_id}...")
+    print(f"Resolviendo streaming URL para {source_id}...")
     cookies_arg = f"--cookies {cookies_file}" if os.path.exists(cookies_file) else ""
-    cmd = f"yt-dlp --js-runtimes node --extractor-args \"youtube:player_client=tv,web_safari\" {cookies_arg} -g -f 140 'https://www.youtube.com/watch?v={video_id}'"
+    cmd = f"yt-dlp --js-runtimes node --extractor-args \"youtube:player_client=tv,web_safari\" {cookies_arg} -g -f 140 'https://www.youtube.com/watch?v={source_id}'"
     
     proc = await asyncio.create_subprocess_shell(
         cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
