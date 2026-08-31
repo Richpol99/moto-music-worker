@@ -6,10 +6,25 @@ import subprocess
 RCLONE_CONFIG_DATA = os.environ.get("RCLONE_CONFIG_DATA", "")
 YOUTUBE_COOKIES = os.environ.get("YOUTUBE_COOKIES", "")
 
-# Escribir rclone config
+# Escribir rclone config reconstruyendo lineas rotas por el navegador de la tablet
 os.makedirs("/root/.config/rclone", exist_ok=True)
+
+lines = RCLONE_CONFIG_DATA.splitlines()
+clean_lines = []
+for line in lines:
+    line = line.strip()
+    if not line:
+        continue
+    # Si la linea empieza por [ o contiene = es una linea nueva de config
+    if line.startswith("[") or "=" in line:
+        clean_lines.append(line)
+    else:
+        # Si no tiene =, es porque el navegador la envolvió y se rompió del renglon anterior
+        if clean_lines:
+            clean_lines[-1] += line
+
 with open("/root/.config/rclone/rclone.conf", "w") as f:
-    f.write(RCLONE_CONFIG_DATA)
+    f.write("\n".join(clean_lines) + "\n")
 
 # Escribir cookies si existen
 cookies_file = "/tmp/cookies.txt"

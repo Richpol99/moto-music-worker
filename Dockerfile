@@ -5,6 +5,7 @@ RUN apt-get update && apt-get install -y \
     unzip \
     ca-certificates \
     ffmpeg \
+    nodejs \
     && curl https://rclone.org/install.sh | bash \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
