@@ -77,9 +77,40 @@ async def handle_resolve(request):
         print(f"Error resolviendo stream para {video_id}: {err}")
         return web.json_response({"success": False, "error": err}, status=500)
 
+async def handle_stream(request):
+    video_id = request.query.get("id", "").strip()
+    if not video_id:
+        return web.Response(status=400, text="ID requerido")
+
+    temp_file = f"/tmp/{video_id}.m4a"
+    if not os.path.exists(temp_file):
+        print(f"Descargando {video_id} de GDrive a /tmp de Render para streaming...")
+        cmd = ["rclone", "copyto", f"gdrive:music_cache/{video_id}.m4a", temp_file]
+        proc = await asyncio.create_subprocess_exec(
+            *cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+        )
+        await proc.wait()
+        
+    if os.path.exists(temp_file):
+        # Auto-limpieza en Render después de 10 minutos
+        async def cleanup():
+            await asyncio.sleep(600)
+            try:
+                if os.path.exists(temp_file):
+                    os.remove(temp_file)
+                    print(f"Temporal de Render eliminado: {temp_file}")
+            except Exception as ce:
+                print(f"Error limpiando {temp_file}: {ce}")
+        asyncio.create_task(cleanup())
+        
+        return web.FileResponse(temp_file)
+    else:
+        return web.Response(status=404, text="Archivo no encontrado en Google Drive")
+
 app = web.Application()
 app.router.add_get("/cache", handle_cache)
 app.router.add_get("/resolve", handle_resolve)
+app.router.add_get("/stream", handle_stream)
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
