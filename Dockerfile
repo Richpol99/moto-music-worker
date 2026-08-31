@@ -1,12 +1,10 @@
-FROM python:3.10-slim
+FROM nikolaik/python-nodejs:python3.10-nodejs18-slim
 
 RUN apt-get update && apt-get install -y \
     curl \
     unzip \
     ca-certificates \
     ffmpeg \
-    nodejs \
-    && ln -s /usr/bin/nodejs /usr/bin/node \
     && curl https://rclone.org/install.sh | bash \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
